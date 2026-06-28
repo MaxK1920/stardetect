@@ -151,6 +151,27 @@ def _draw_box(draw: ImageDraw.ImageDraw, box, style, line_w, alpha):
         draw.rectangle([x1, y1, x2, y2], outline=color, width=line_w)
 
 
+def _draw_obj_label(draw: ImageDraw.ImageDraw, box, text: str, lab: Dict, alpha: float) -> None:
+    """Render a label (background rect + text) anchored to ``box`` at ``alpha``."""
+    if not text:
+        return
+    x1, y1, x2, y2 = box
+    font = _load_font(lab.get("font", "Consolas"), int(lab.get("fontSize", 16)))
+    pad = int(lab.get("padding", 5))
+    tb = draw.textbbox((0, 0), text, font=font)
+    tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    pos = lab.get("position", "top")
+    lx = x1
+    if pos in ("bottom", "inside-bottom"):
+        ly = y2 if pos == "bottom" else y2 - th - 2 * pad
+    else:
+        ly = y1 - th - 2 * pad if pos == "top" else y1
+    draw.rectangle([lx, ly, lx + tw + 2 * pad, ly + th + 2 * pad],
+                   fill=_rgba(lab.get("bgColor", "#000000"), alpha * lab.get("bgOpacity", 0.92)))
+    draw.text((lx + pad, ly + pad - tb[1]), text, font=font,
+              fill=_rgba(lab.get("color", "#ffffff"), alpha))
+
+
 def _pixel_sort(rgb: "np.ndarray", ps: Dict) -> "np.ndarray":
     """Sort pixels in each column (vertical) or row (horizontal) by luminance.
 
@@ -255,7 +276,7 @@ def render_overlay(width: int, height: int, objects: List[Dict],
 
     conf_thresh = kf.get("confidence")
     max_glow_blur = 0.0
-    for obj in objects:
+    for _oi, obj in enumerate(objects):
         cname = obj.get("cls", "object")
         if conf_thresh is not None and obj.get("conf", 0.0) < conf_thresh:
             continue
@@ -272,13 +293,24 @@ def render_overlay(width: int, height: int, objects: List[Dict],
         line_w = max(1, int(round(style["box"]["lineWidth"])))
 
         oid_key = str(obj["id"]) if obj.get("id") is not None else None
-        if trail_enabled and oid_key is not None:
-            hist = trail_state.get(oid_key, [])
+        trail_key = oid_key if oid_key is not None else str(_oi)
+        lab = style["label"]
+        ghost_text = None
+        if trail_enabled and lab.get("enabled", True):
+            custom = obj.get("label")
+            ghost_text = str(custom) if custom else style_model.format_label(
+                lab.get("format", "{class}"), class_aliases.get(cname, cname),
+                obj.get("conf", 0.0), oid,
+                lab.get("showConfidence", True), lab.get("showId", False))
+        if trail_enabled:
+            hist = trail_state.get(trail_key, [])
             for age_idx, past_box in enumerate(hist):
                 age = len(hist) - age_idx
                 t_alpha = min(1.0, (trail_decay ** age) * alpha)
                 if t_alpha > 0.01:
                     _draw_box(draw, past_box, style, line_w, t_alpha)
+                    if ghost_text:
+                        _draw_obj_label(draw, past_box, ghost_text, lab, t_alpha)
 
         # fill / gradient — dither takes precedence when enabled + footage present
         fill = style["box"].get("fill", {})
@@ -310,40 +342,21 @@ def render_overlay(width: int, height: int, objects: List[Dict],
 
         _draw_box(draw, box, style, line_w, alpha)
 
-        if trail_enabled and oid_key is not None:
-            hist = list(trail_state.get(oid_key, []))
+        if trail_enabled:
+            hist = list(trail_state.get(trail_key, []))
             hist.append(list(box))
             if len(hist) > trail_len:
                 hist = hist[-trail_len:]
-            trail_state[oid_key] = hist
+            trail_state[trail_key] = hist
 
         # label
-        lab = style["label"]
         if lab.get("enabled", True):
             custom = obj.get("label")
-            if custom:
-                text = str(custom)
-            else:
-                text = style_model.format_label(
-                    lab.get("format", "{class}"), class_aliases.get(cname, cname),
-                    obj.get("conf", 0.0), oid,
-                    lab.get("showConfidence", True), lab.get("showId", False))
-            if text:
-                font = _load_font(lab.get("font", "Consolas"), int(lab.get("fontSize", 16)))
-                pad = int(lab.get("padding", 5))
-                tb = draw.textbbox((0, 0), text, font=font)
-                tw, th = tb[2] - tb[0], tb[3] - tb[1]
-                pos = lab.get("position", "top")
-                lx = x1
-                if pos in ("bottom", "inside-bottom"):
-                    ly = (y2 if pos == "bottom" else y2 - th - 2 * pad)
-                else:
-                    ly = (y1 - th - 2 * pad if pos == "top" else y1)
-                bg = _rgba(lab.get("bgColor", "#00e5ff"),
-                           alpha * lab.get("bgOpacity", 0.9))
-                draw.rectangle([lx, ly, lx + tw + 2 * pad, ly + th + 2 * pad], fill=bg)
-                draw.text((lx + pad, ly + pad - tb[1]), text, font=font,
-                          fill=_rgba(lab.get("color", "#001218"), alpha))
+            text = str(custom) if custom else style_model.format_label(
+                lab.get("format", "{class}"), class_aliases.get(cname, cname),
+                obj.get("conf", 0.0), oid,
+                lab.get("showConfidence", True), lab.get("showId", False))
+            _draw_obj_label(draw, box, text, lab, alpha)
 
     # composite glow under main strokes
     if max_glow_blur > 0:

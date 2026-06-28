@@ -173,9 +173,9 @@ window.App = window.App || {};
     }
   }
 
-  // Draw only the box stroke at the given alpha (used for trail ghosts).
-  function drawGhostBox(ctx, box, style, alpha) {
-    const [x1, y1, x2, y2] = box;
+  // Draw a ghost (trail) frame: box stroke + label at the given alpha.
+  function drawGhostBox(ctx, obj, style, alpha, displayCls) {
+    const [x1, y1, x2, y2] = obj.box;
     const b = style.box;
     const lw = Math.max(1, b.lineWidth);
     ctx.save();
@@ -187,6 +187,28 @@ window.App = window.App || {};
     }
     drawBoxPath(ctx, x1, y1, x2, y2, style, lw);
     ctx.restore();
+    const L = style.label;
+    if (L.enabled) {
+      const text = (obj.label != null && obj.label !== '')
+        ? obj.label
+        : formatLabel(L.format, displayCls || obj.cls, obj.conf || 0, obj.id, L.showConfidence, L.showId);
+      if (text) {
+        ctx.font = `${L.fontSize}px "${L.font}", monospace`;
+        ctx.textBaseline = 'top';
+        const pad = L.padding;
+        const tw = ctx.measureText(text).width;
+        const th = L.fontSize;
+        let lx = x1, ly;
+        if (L.position === 'bottom') ly = y2;
+        else if (L.position === 'inside-bottom') ly = y2 - th - 2 * pad;
+        else if (L.position === 'inside-top') ly = y1;
+        else ly = y1 - th - 2 * pad;
+        ctx.fillStyle = rgba(L.bgColor, alpha * L.bgOpacity);
+        ctx.fillRect(lx, ly, tw + 2 * pad, th + 2 * pad);
+        ctx.fillStyle = rgba(L.color, alpha);
+        ctx.fillText(text, lx + pad, ly + pad);
+      }
+    }
   }
 
   // Posterized grain-threshold gradient map of the source footage inside the box.
@@ -338,7 +360,9 @@ window.App = window.App || {};
         for (let ti = 0; ti < hist.length; ti++) {
           const age = hist.length - ti;
           const ghostAlpha = Math.pow(trailDecay, age) * alpha;
-          if (ghostAlpha > 0.005) drawGhostBox(ctx, hist[ti].box, style, ghostAlpha);
+          if (ghostAlpha > 0.005)
+            drawGhostBox(ctx, { box: hist[ti].box, cls: obj.cls, conf: obj.conf, id: obj.id, label: obj.label },
+                         style, ghostAlpha, aliases[cls] || cls);
         }
       }
 
