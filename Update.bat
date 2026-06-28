@@ -193,16 +193,30 @@ if not exist "node_modules\electron\dist\electron.exe" (
     pause
     exit /b 1
   )
-  REM  npm postinstall often fails silently - run the download script directly.
+  REM  npm postinstall often fails silently - run the download script directly,
+  REM  retrying up to 3 times in case of a transient network failure.
+  set "ELECTRON_OK=0"
   if exist "node_modules\electron\install.js" (
-    echo [*] Running Electron binary downloader...
-    node node_modules\electron\install.js
+    for /l %%A in (1,1,3) do (
+      if "!ELECTRON_OK!"=="0" (
+        echo [*] Downloading Electron binary ^(attempt %%A of 3^)...
+        node node_modules\electron\install.js
+        if exist "node_modules\electron\dist\electron.exe" (
+          set "ELECTRON_OK=1"
+        ) else (
+          if %%A LSS 3 (
+            echo [!] Download failed - retrying in 5 seconds...
+            timeout /t 5 /nobreak >nul
+          )
+        )
+      )
+    )
   )
-  if not exist "node_modules\electron\dist\electron.exe" (
+  if "!ELECTRON_OK!"=="0" (
     echo.
-    echo [X] Electron binary still missing after reinstall.
-    echo     Try running  npm install  manually in the project folder,
-    echo     or check https://github.com/electron/electron for known issues.
+    echo [X] Electron binary download failed after 3 attempts.
+    echo     This is usually a network issue ^(slow connection / firewall^).
+    echo     Try again later, or run  npm install  manually in the project folder.
     echo.
     pause
     exit /b 1
