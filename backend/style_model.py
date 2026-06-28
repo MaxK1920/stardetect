@@ -31,7 +31,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
         "glow": {"enabled": False, "blur": 14.0, "color": "#000000"},
         "fill": {"enabled": False, "color": "#000000", "opacity": 0.12},
         "gradient": {"enabled": False, "from": "#00e5ff", "to": "#ff2bd6", "angle": 0.0},
-        "dither": {"enabled": False, "from": "#c71f05", "to": "#ffe60d",
+        "dither": {"enabled": False, "colors": ["#c71f05", "#ffe60d"],
                    "grain": 0.25, "levels": 3, "contrast": 1.0, "opacity": 1.0},
     },
     "label": {
