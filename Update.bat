@@ -1,13 +1,18 @@
 @echo off
 REM ===========================================================================
 REM  StarDetect  -  Update via Git
-REM  Run this to pull the latest version from the remote and refresh deps.
-REM  Requirements: Git must be installed and the app must have been installed
-REM  by cloning its Git repository (not by extracting a zip).
+REM  Run this to pull the latest version and refresh dependencies.
+REM  Works whether you cloned the repo or downloaded it as a zip.
+REM  Requirements: Git must be installed (https://git-scm.com/downloads).
 REM ===========================================================================
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 title StarDetect - Updater
+
+REM ---------------------------------------------------------------------------
+REM  Repository URL  (change this if the repo moves)
+REM ---------------------------------------------------------------------------
+set "REPO_URL=https://github.com/MaxK1920/stardetect.git"
 
 echo ===========================================================
 echo               StarDetect  -  Updater
@@ -38,54 +43,80 @@ if errorlevel 1 (
 for /f "delims=" %%v in ('git --version') do echo [ok] %%v
 
 REM ---------------------------------------------------------------------------
-REM  2. Is this a Git repository?
+REM  2. Link to Git repository (initialize if this was downloaded as a zip)
 REM ---------------------------------------------------------------------------
+set "FIRST_INSTALL=0"
 if not exist ".git" (
   echo.
-  echo [X] This folder is not a Git repository.
+  echo [!] No Git repository found - this looks like a zip download.
+  echo     Linking to the StarDetect repository so updates will work...
   echo.
-  echo     Auto-update only works when the app was installed via git clone.
-  echo     If you downloaded a zip, delete this folder and clone instead:
+  git init
+  git remote add origin %REPO_URL%
+  if errorlevel 1 (
+    echo [X] Failed to link the repository. Check your internet connection.
+    pause
+    exit /b 1
+  )
+  echo [ok] Linked to %REPO_URL%
   echo.
-  echo       git clone ^<repository-url^> StarDetect
-  echo.
-  pause
-  exit /b 1
+  set "FIRST_INSTALL=1"
 )
 
 REM ---------------------------------------------------------------------------
-REM  3. Save current HEAD so we can compare after the pull
+REM  3. Save current HEAD (empty on first install, that is fine)
 REM ---------------------------------------------------------------------------
 for /f "delims=" %%h in ('git rev-parse HEAD 2^>nul') do set "HEAD_BEFORE=%%h"
-if "!HEAD_BEFORE!"=="" (
-  echo [X] Could not read current Git commit. Repository may be corrupt.
-  pause
-  exit /b 1
+if "!FIRST_INSTALL!"=="0" (
+  if "!HEAD_BEFORE!"=="" (
+    echo [X] Could not read current Git commit. Repository may be corrupt.
+    pause
+    exit /b 1
+  )
+  echo [*] Current version : !HEAD_BEFORE:~0,7!
 )
-echo [*] Current version : !HEAD_BEFORE:~0,7!
 
 REM ---------------------------------------------------------------------------
-REM  4. Pull
+REM  4. Fetch / pull
 REM ---------------------------------------------------------------------------
 echo.
-echo [*] Checking for updates...
-echo.
-git pull --ff-only
-if errorlevel 1 (
+if "!FIRST_INSTALL!"=="1" (
+  echo [*] Downloading StarDetect from GitHub...
   echo.
-  echo [X] git pull failed. Common causes:
+  git fetch origin
+  if errorlevel 1 (
+    echo.
+    echo [X] Download failed. Check your internet connection.
+    echo.
+    pause
+    exit /b 1
+  )
+  git reset --hard origin/main
+  if errorlevel 1 (
+    echo.
+    echo [X] Failed to apply downloaded files.
+    echo.
+    pause
+    exit /b 1
+  )
+) else (
+  echo [*] Checking for updates...
   echo.
-  echo     - No internet connection.
-  echo     - No remote configured. Fix with:
-  echo         git remote add origin ^<repository-url^>
-  echo     - Local uncommitted changes conflict with incoming changes.
-  echo         Run "git status" to inspect.
-  echo     - Non-fast-forward history ^(someone force-pushed^).
-  echo         Run "git fetch origin" then "git reset --hard origin/main"
-  echo         ^(WARNING: discards any local changes^).
-  echo.
-  pause
-  exit /b 1
+  git pull --ff-only
+  if errorlevel 1 (
+    echo.
+    echo [X] git pull failed. Common causes:
+    echo.
+    echo     - No internet connection.
+    echo     - Local uncommitted changes conflict with incoming changes.
+    echo         Run "git status" to inspect.
+    echo     - Non-fast-forward history ^(someone force-pushed^).
+    echo         Run "git fetch origin" then "git reset --hard origin/main"
+    echo         ^(WARNING: discards any local changes^).
+    echo.
+    pause
+    exit /b 1
+  )
 )
 
 REM ---------------------------------------------------------------------------
@@ -93,38 +124,45 @@ REM  5. Compare HEAD before and after
 REM ---------------------------------------------------------------------------
 for /f "delims=" %%h in ('git rev-parse HEAD 2^>nul') do set "HEAD_AFTER=%%h"
 
-if "!HEAD_BEFORE!"=="!HEAD_AFTER!" (
+if "!FIRST_INSTALL!"=="0" (
+  if "!HEAD_BEFORE!"=="!HEAD_AFTER!" (
+    echo.
+    echo [ok] Already up to date ^(!HEAD_AFTER:~0,7!^) - nothing to do.
+    echo.
+    goto :launch_prompt
+  )
   echo.
-  echo [ok] Already up to date ^(!HEAD_AFTER:~0,7!^) - nothing to do.
+  echo [ok] Updated  !HEAD_BEFORE:~0,7!  --^>  !HEAD_AFTER:~0,7!
   echo.
-  goto :launch_prompt
+) else (
+  echo.
+  echo [ok] Downloaded version !HEAD_AFTER:~0,7!
+  echo.
 )
 
-echo.
-echo [ok] Updated  !HEAD_BEFORE:~0,7!  --^>  !HEAD_AFTER:~0,7!
-echo.
-
 REM ---------------------------------------------------------------------------
-REM  6. Detect which files changed so we only re-install what is needed
+REM  6. Detect which files changed (always install all deps on first install)
 REM ---------------------------------------------------------------------------
-git diff --name-only "!HEAD_BEFORE!" "!HEAD_AFTER!" >"%TEMP%\sd_update_changed.txt" 2>nul
-
 set "NEED_NPM=0"
 set "NEED_PIP=0"
 
-findstr /i "^package" "%TEMP%\sd_update_changed.txt" >nul 2>nul
-if not errorlevel 1 set "NEED_NPM=1"
-
-findstr /i "^backend/requirements" "%TEMP%\sd_update_changed.txt" >nul 2>nul
-if not errorlevel 1 set "NEED_PIP=1"
-
-del "%TEMP%\sd_update_changed.txt" >nul 2>nul
+if "!FIRST_INSTALL!"=="1" (
+  set "NEED_NPM=1"
+  set "NEED_PIP=1"
+) else (
+  git diff --name-only "!HEAD_BEFORE!" "!HEAD_AFTER!" >"%TEMP%\sd_update_changed.txt" 2>nul
+  findstr /i "^package" "%TEMP%\sd_update_changed.txt" >nul 2>nul
+  if not errorlevel 1 set "NEED_NPM=1"
+  findstr /i "^backend/requirements" "%TEMP%\sd_update_changed.txt" >nul 2>nul
+  if not errorlevel 1 set "NEED_PIP=1"
+  del "%TEMP%\sd_update_changed.txt" >nul 2>nul
+)
 
 REM ---------------------------------------------------------------------------
-REM  7. Refresh Node dependencies (only when package.json / lock changed)
+REM  7. Refresh Node dependencies
 REM ---------------------------------------------------------------------------
 if "!NEED_NPM!"=="1" (
-  echo [*] package.json changed - refreshing Node dependencies...
+  echo [*] Installing Node dependencies...
   call npm install
   if errorlevel 1 (
     echo.
@@ -133,17 +171,17 @@ if "!NEED_NPM!"=="1" (
     pause
     exit /b 1
   )
-  echo [ok] Node dependencies updated.
+  echo [ok] Node dependencies installed.
   echo.
 ) else (
   echo [ok] Node dependencies - no change.
 )
 
 REM ---------------------------------------------------------------------------
-REM  8. Refresh Python dependencies (only when requirements.txt changed)
+REM  8. Refresh Python dependencies
 REM ---------------------------------------------------------------------------
 if "!NEED_PIP!"=="1" (
-  echo [*] requirements.txt changed - refreshing Python dependencies...
+  echo [*] Installing Python dependencies...
   python -m pip install -r backend\requirements.txt
   if errorlevel 1 (
     echo.
@@ -152,7 +190,7 @@ if "!NEED_PIP!"=="1" (
     pause
     exit /b 1
   )
-  echo [ok] Python dependencies updated.
+  echo [ok] Python dependencies installed.
   echo.
 ) else (
   echo [ok] Python dependencies - no change.
@@ -160,7 +198,11 @@ if "!NEED_PIP!"=="1" (
 
 echo.
 echo ===========================================================
-echo  Update complete!
+if "!FIRST_INSTALL!"=="1" (
+  echo  Installation complete!
+) else (
+  echo  Update complete!
+)
 echo ===========================================================
 echo.
 
