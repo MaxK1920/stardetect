@@ -323,16 +323,18 @@ window.App = window.App || {};
     if (time < _trailLastTime - 0.5) _trailHistory.clear();
     _trailLastTime = time;
 
-    for (const obj of objects) {
+    for (let _oi = 0; _oi < objects.length; _oi++) {
+      const obj = objects[_oi];
       const cls = obj.cls || 'object';
       if (confThresh != null && (obj.conf || 0) < confThresh) continue;
       if (config.classVisibility && config.classVisibility[cls] === false) continue;
       if (obj.id != null && config.idVisibility && config.idVisibility[String(obj.id)] === false) continue;
       const style = resolveStyle(config.global, config.classStyles, cls, kf);
       const alpha = Math.max(0, Math.min(1, style.box.opacity * gOp));
+      const trailKey = obj.id != null ? obj.id : _oi;
 
-      if (trailEnabled && obj.id != null) {
-        const hist = _trailHistory.get(obj.id) || [];
+      if (trailEnabled) {
+        const hist = _trailHistory.get(trailKey) || [];
         for (let ti = 0; ti < hist.length; ti++) {
           const age = hist.length - ti;
           const ghostAlpha = Math.pow(trailDecay, age) * alpha;
@@ -342,11 +344,11 @@ window.App = window.App || {};
 
       drawObject(ctx, obj, style, gOp, aliases[cls] || cls, source);
 
-      if (trailEnabled && obj.id != null) {
-        const hist = _trailHistory.get(obj.id) || [];
+      if (trailEnabled) {
+        const hist = _trailHistory.get(trailKey) || [];
         hist.push({ box: obj.box.slice(), t: time });
         while (hist.length > trailLen) hist.shift();
-        _trailHistory.set(obj.id, hist);
+        _trailHistory.set(trailKey, hist);
       }
     }
   }
