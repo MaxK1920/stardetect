@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' 'unsafe-inline' media: data: https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: blob: media:; media-src 'self' media: blob: file:; font-src https://fonts.gstatic.com 'self';" />
+  <title>StarDetect</title>
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'&gt;&lt;rect width='16' height='16' fill='%23080a0e'/&gt;&lt;rect x='2' y='2' width='12' height='12' fill='none' stroke='%2314e0ff' stroke-width='2'/&gt;&lt;/svg&gt;" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">[<b></b>]</span>
+      <span class="brand-name">STAR<span>DETECT</span></span>
+      <span class="brand-sub">object overlay studio</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btn-import" class="btn btn-accent">＋ Import Video</button>
+      <button id="btn-demo" class="btn">Load Demo</button>
+      <div class="status-pill" id="deps-pill" title="Backend status">
+        <span class="dot"></span><span id="deps-text">checking…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- LEFT: detection / sound / batch -->
+    <aside class="col col-left">
+      <div class="tabs" data-group="left">
+        <button class="tab active" data-tab="detection">Detection</button>
+        <button class="tab" data-tab="sound">Sound FX</button>
+        <button class="tab" data-tab="batch">Batch</button>
+      </div>
+
+      <section class="tabpane active" data-pane="detection" id="detection-panel"></section>
+      <section class="tabpane" data-pane="sound" id="sound-panel"></section>
+      <section class="tabpane" data-pane="batch" id="batch-panel"></section>
+    </aside>
+
+    <!-- CENTER: viewer + timeline -->
+    <section class="col col-center">
+      <div class="viewer-wrap" id="viewer-wrap">
+        <div class="viewer-stage" id="viewer-stage">
+          <video id="video" preload="auto"></video>
+          <canvas id="overlay"></canvas>
+          <div class="viewer-empty" id="viewer-empty">
+            <div class="hud-frame">
+              <p class="big">NO SIGNAL</p>
+              <p class="small">Import a video or load the demo to begin</p>
+            </div>
+          </div>
+          <div class="viewer-readout" id="viewer-readout"></div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="btn-step-back" class="tbtn" title="Previous frame">◂</button>
+        <button id="btn-play" class="tbtn play" title="Play/Pause">▶</button>
+        <button id="btn-step-fwd" class="tbtn" title="Next frame">▸</button>
+        <span class="timecode" id="timecode">00:00:00 / 00:00:00</span>
+        <span class="spacer"></span>
+        <label class="mini">preview opacity
+          <input type="range" id="global-opacity" min="0" max="1" step="0.01" value="1" />
+        </label>
+        <button id="btn-add-kf" class="tbtn" title="Add keyframe at playhead for active track">◆ Key</button>
+        <button id="btn-edit-labels" class="tbtn" title="Click a detection box in the preview to rename its label">✎ Edit labels</button>
+      </div>
+
+      <div class="timeline" id="timeline">
+        <div class="timeline-ruler" id="timeline-ruler"></div>
+        <div class="timeline-track" id="timeline-track">
+          <div class="playhead" id="playhead"></div>
+          <div class="detect-coverage" id="detect-coverage"></div>
+        </div>
+        <div class="kf-lane-head">
+          <select id="kf-track-select" class="select-sm">
+            <option value="opacity">opacity</option>
+            <option value="lineWidth">line width</option>
+            <option value="confidence">confidence</option>
+            <option value="labelsVisible">labels visible</option>
+            <option value="color">color</option>
+          </select>
+          <span id="kf-value-readout" class="mono dim">—</span>
+        </div>
+        <div class="kf-lane" id="kf-lane"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT: style / export / presets -->
+    <aside class="col col-right">
+      <div class="tabs" data-group="right">
+        <button class="tab active" data-tab="style">Style</button>
+        <button class="tab" data-tab="classes">By Class</button>
+        <button class="tab" data-tab="presets">Presets</button>
+        <button class="tab" data-tab="export">Export</button>
+      </div>
+      <section class="tabpane active" data-pane="style" id="style-panel"></section>
+      <section class="tabpane" data-pane="classes" id="classes-panel"></section>
+      <section class="tabpane" data-pane="presets" id="presets-panel"></section>
+      <section class="tabpane" data-pane="export" id="export-panel"></section>
+    </aside>
+  </main>
+
+  <!-- Toast / progress -->
+  <div class="toast-stack" id="toast-stack"></div>
+  <div class="progress-bar" id="progress-bar"><div class="fill" id="progress-fill"></div><span id="progress-label"></span></div>
+
+  <!-- classic scripts: order matters (shared App namespace) -->
+  <script src="overlay-renderer.js"></script>
+  <script src="ui.js"></script>
+  <script src="viewer.js"></script>
+  <script src="style-editor.js"></script>
+  <script src="detection-panel.js"></script>
+  <script src="class-style.js"></script>
+  <script src="keyframes.js"></script>
+  <script src="sound-panel.js"></script>
+  <script src="export-panel.js"></script>
+  <script src="batch.js"></script>
+  <script src="presets.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

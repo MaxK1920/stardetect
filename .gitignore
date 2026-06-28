@@ -1,0 +1,15 @@
+node_modules/
+release/
+__pycache__/
+*.pyc
+smoke.log
+logs/
+*.log
+.DS_Store
+
+# Large model weights (download into models/ as needed; yolov8n is small enough to keep)
+models/*.pt
+!models/yolov8n.pt
+
+# Generated detection caches in userData are outside the repo, but ignore any local ones
+*.detections.local.json

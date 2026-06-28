@@ -1,0 +1,33 @@
+{
+  "name": "Neon Fill",
+  "global": {
+    "box": {
+      "mode": "full",
+      "shape": "rounded",
+      "lineWidth": 3,
+      "cornerLength": 18,
+      "radius": 10,
+      "color": "#39ff14",
+      "opacity": 1,
+      "glow": { "enabled": true, "blur": 18, "color": "#39ff14" },
+      "fill": { "enabled": true, "color": "#39ff14", "opacity": 0.14 },
+      "gradient": { "enabled": false, "from": "#39ff14", "to": "#00e5ff", "angle": 45 }
+    },
+    "label": {
+      "enabled": true,
+      "font": "Segoe UI",
+      "fontSize": 18,
+      "color": "#04150a",
+      "bgColor": "#39ff14",
+      "bgOpacity": 0.9,
+      "position": "top",
+      "format": "{class} {conf} {id}",
+      "showConfidence": true,
+      "showId": true,
+      "padding": 6
+    },
+    "scan": { "enabled": false, "color": "#39ff14", "opacity": 0.2, "speed": 1 }
+  },
+  "classStyles": {},
+  "classVisibility": {}
+}
