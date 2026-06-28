@@ -14,7 +14,8 @@
       "glow": { "enabled": false, "blur": 14, "color": "#000000" },
       "fill": { "enabled": false, "color": "#000000", "opacity": 0.12 },
       "gradient": { "enabled": false, "from": "#00e5ff", "to": "#ff2bd6", "angle": 0 },
-      "dither": { "enabled": false, "colors": ["#c71f05", "#ffe60d"], "grain": 0.25, "levels": 3, "contrast": 1, "opacity": 1 }
+      "dither": { "enabled": false, "colors": ["#c71f05", "#ffe60d"], "grain": 0.25, "levels": 3, "contrast": 1, "opacity": 1,
+               "pixelSort": { "enabled": false, "direction": "vertical", "reverse": false } }
     },
     "label": {
       "enabled": true,
@@ -29,7 +30,8 @@
       "showId": false,
       "padding": 5
     },
-    "scan": { "enabled": false, "color": "#00e5ff", "opacity": 0.25, "speed": 1 }
+    "scan": { "enabled": false, "color": "#00e5ff", "opacity": 0.25, "speed": 1 },
+    "trail": { "enabled": false, "length": 8, "decay": 0.6 }
   },
   "classStyles": {},
   "classVisibility": {}

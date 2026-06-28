@@ -51,6 +51,10 @@ window.App = window.App || {};
       { enabled: false, colors: ['#c71f05', '#ffe60d'], grain: 0.25, levels: 3, contrast: 1, opacity: 1 },
       b.dither || {});
     if (!d.colors || !d.colors.length) d.colors = [d.from || '#c71f05', d.to || '#ffe60d'];
+    const dps = d.pixelSort = Object.assign(
+      { enabled: false, direction: 'vertical', reverse: false }, d.pixelSort || {});
+    const tr = S().trail = Object.assign(
+      { enabled: false, length: 8, decay: 0.6 }, S().trail || {});
 
     // instant example preview
     exampleCanvas = h('canvas', { width: 318, height: 150, style: { width: '100%', border: '1px solid var(--line)', borderRadius: 'var(--radius)', background: '#0a0d12' } });
@@ -108,7 +112,12 @@ window.App = window.App || {};
         slider('Noise strength', d.grain, 0, 1, 0.01, (v) => { d.grain = v; changed(); }, (x) => x.toFixed(2)),
         slider('Levels (threshold)', d.levels, 2, 8, 1, (v) => { d.levels = v; changed(); }),
         slider('Contrast', d.contrast, 0.2, 3, 0.05, (v) => { d.contrast = v; changed(); }, (x) => x.toFixed(2)),
-        slider('Fill opacity', d.opacity, 0, 1, 0.01, (v) => { d.opacity = v; changed(); }, (x) => x.toFixed(2))),
+        slider('Fill opacity', d.opacity, 0, 1, 0.01, (v) => { d.opacity = v; changed(); }, (x) => x.toFixed(2)),
+        checkRow('Pixel sort', dps.enabled, (v) => { dps.enabled = v; changed(); }),
+        selectRow('Sort direction', dps.direction,
+          [{ value: 'vertical', label: 'Vertical (columns)' }, { value: 'horizontal', label: 'Horizontal (rows)' }],
+          (v) => { dps.direction = v; changed(); }),
+        checkRow('Reverse sort order', dps.reverse, (v) => { dps.reverse = v; changed(); })),
 
       group('Label',
         checkRow('Show label', L.enabled, (v) => { L.enabled = v; changed(); }),
@@ -129,7 +138,13 @@ window.App = window.App || {};
         checkRow('Enable scanline', sc.enabled, (v) => { sc.enabled = v; changed(); }),
         colorRow('Scan color', sc.color, (v) => { sc.color = v; changed(); }),
         slider('Scan opacity', sc.opacity, 0, 1, 0.01, (v) => { sc.opacity = v; changed(); }, (x) => x.toFixed(2)),
-        slider('Scan speed', sc.speed, 0.1, 4, 0.1, (v) => { sc.speed = v; changed(); }, (x) => x.toFixed(1)))
+        slider('Scan speed', sc.speed, 0.1, 4, 0.1, (v) => { sc.speed = v; changed(); }, (x) => x.toFixed(1))),
+
+      group('Trail',
+        checkRow('Enable trail', tr.enabled, (v) => { tr.enabled = v; changed(); }),
+        h('p', { class: 'hint' }, 'Draws ghost copies of previous box positions behind moving tracked objects. Requires object tracking (IDs).'),
+        slider('Trail length (frames)', tr.length, 1, 20, 1, (v) => { tr.length = v; changed(); }),
+        slider('Opacity decay', tr.decay, 0.1, 0.95, 0.01, (v) => { tr.decay = v; changed(); }, (x) => x.toFixed(2)))
     );
 
     exampleCtx = exampleCanvas.getContext('2d');

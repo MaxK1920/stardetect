@@ -32,7 +32,8 @@ DEFAULT_STYLE: Dict[str, Any] = {
         "fill": {"enabled": False, "color": "#000000", "opacity": 0.12},
         "gradient": {"enabled": False, "from": "#00e5ff", "to": "#ff2bd6", "angle": 0.0},
         "dither": {"enabled": False, "colors": ["#c71f05", "#ffe60d"],
-                   "grain": 0.25, "levels": 3, "contrast": 1.0, "opacity": 1.0},
+                   "grain": 0.25, "levels": 3, "contrast": 1.0, "opacity": 1.0,
+                   "pixelSort": {"enabled": False, "direction": "vertical", "reverse": False}},
     },
     "label": {
         "enabled": True,
@@ -48,6 +49,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
         "padding": 5.0,
     },
     "scan": {"enabled": False, "color": "#00e5ff", "opacity": 0.25, "speed": 1.0},
+    "trail": {"enabled": False, "length": 8, "decay": 0.6},
 }
 
 
