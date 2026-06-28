@@ -1,0 +1,46 @@
+{
+  "presets": [
+    {
+      "id": "mp4_h264",
+      "label": "MP4 H.264 (burned-in)",
+      "ext": ".mp4",
+      "settings": { "mode": "burned", "container": "mp4", "vcodec": "libx264", "pixfmt": "yuv420p", "crf": 20 }
+    },
+    {
+      "id": "mp4_h265",
+      "label": "MP4 H.265/HEVC (burned-in)",
+      "ext": ".mp4",
+      "settings": { "mode": "burned", "container": "mp4", "vcodec": "libx265", "pixfmt": "yuv420p", "crf": 22 }
+    },
+    {
+      "id": "prores_burned",
+      "label": "ProRes 422 HQ (burned-in)",
+      "ext": ".mov",
+      "settings": { "mode": "burned", "container": "mov", "vcodec": "prores_ks", "pixfmt": "yuv422p10le", "proresProfile": 3 }
+    },
+    {
+      "id": "alpha_prores",
+      "label": "Alpha Overlay - ProRes 4444 (transparent)",
+      "ext": ".mov",
+      "settings": { "mode": "alpha", "container": "mov", "vcodec": "prores_ks", "pixfmt": "yuva444p10le", "proresProfile": 4 }
+    },
+    {
+      "id": "alpha_webm",
+      "label": "Alpha Overlay - WebM VP9 (transparent)",
+      "ext": ".webm",
+      "settings": { "mode": "alpha", "container": "webm", "vcodec": "libvpx-vp9", "pixfmt": "yuva420p", "crf": 24 }
+    },
+    {
+      "id": "alpha_png_seq",
+      "label": "Alpha Overlay - PNG Sequence (transparent)",
+      "ext": "",
+      "settings": { "mode": "sequence", "compositeSource": false }
+    },
+    {
+      "id": "burned_png_seq",
+      "label": "Image Sequence - PNG (burned-in)",
+      "ext": "",
+      "settings": { "mode": "sequence", "compositeSource": true }
+    }
+  ]
+}

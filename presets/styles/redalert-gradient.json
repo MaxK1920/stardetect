@@ -1,0 +1,33 @@
+{
+  "name": "Red Alert Gradient",
+  "global": {
+    "box": {
+      "mode": "full",
+      "shape": "rect",
+      "lineWidth": 2,
+      "cornerLength": 22,
+      "radius": 4,
+      "color": "#ff2b2b",
+      "opacity": 1,
+      "glow": { "enabled": true, "blur": 16, "color": "#ff6a00" },
+      "fill": { "enabled": true, "color": "#ff2b2b", "opacity": 0.18 },
+      "gradient": { "enabled": true, "from": "#ff2b2b", "to": "#ffb300", "angle": 90 }
+    },
+    "label": {
+      "enabled": true,
+      "font": "Consolas",
+      "fontSize": 15,
+      "color": "#1a0500",
+      "bgColor": "#ff6a00",
+      "bgOpacity": 0.95,
+      "position": "bottom",
+      "format": "{class} {conf}",
+      "showConfidence": true,
+      "showId": false,
+      "padding": 5
+    },
+    "scan": { "enabled": true, "color": "#ff6a00", "opacity": 0.22, "speed": 1.4 }
+  },
+  "classStyles": {},
+  "classVisibility": {}
+}

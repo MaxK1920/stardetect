@@ -1,0 +1,18 @@
+# StarDetect Python backend dependencies
+#
+# Core (required for full functionality)
+numpy>=1.24
+Pillow>=10.0
+opencv-python>=4.8
+
+# Real YOLO detection backend.
+# ultralytics ships YOLOv8/YOLO11/YOLO26 models and auto-downloads weights.
+ultralytics>=8.3.0
+
+# Notes:
+# - FFmpeg is required for export and must be installed separately and on PATH
+#   (https://ffmpeg.org/download.html). The app auto-detects it.
+# - torch is installed automatically as an ultralytics dependency. For GPU,
+#   install a CUDA build of torch from https://pytorch.org first.
+# - If ultralytics/torch are missing, the app still runs in FALLBACK mode
+#   (synthetic demo detections) so the UI is fully testable.

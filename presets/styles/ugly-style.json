@@ -1,0 +1,55 @@
+{
+  "name": "Ugly Style",
+  "global": {
+    "box": {
+      "mode": "corners",
+      "shape": "rect",
+      "lineWidth": 2,
+      "cornerLength": 18,
+      "radius": 6,
+      "color": "#000000",
+      "opacity": 1,
+      "glow": {
+        "enabled": false,
+        "blur": 14,
+        "color": "#000000"
+      },
+      "fill": {
+        "enabled": false,
+        "color": "#000000",
+        "opacity": 0.12
+      },
+      "gradient": {
+        "enabled": true,
+        "from": "#00e5ff",
+        "to": "#ff2bd6",
+        "angle": 0
+      },
+      "cornerRelative": false
+    },
+    "label": {
+      "enabled": true,
+      "font": "Halyard Display Black",
+      "fontSize": 48,
+      "color": "#ffffff",
+      "bgColor": "#000000",
+      "bgOpacity": 0.92,
+      "position": "top",
+      "format": "{class} {conf}",
+      "showConfidence": true,
+      "showId": false,
+      "padding": 5
+    },
+    "scan": {
+      "enabled": false,
+      "color": "#00e5ff",
+      "opacity": 0.25,
+      "speed": 1
+    }
+  },
+  "classStyles": {},
+  "classVisibility": {},
+  "classAliases": {
+    "person": "idiot"
+  }
+}
