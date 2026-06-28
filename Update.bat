@@ -193,6 +193,11 @@ if not exist "node_modules\electron\dist\electron.exe" (
     pause
     exit /b 1
   )
+  REM  npm postinstall often fails silently - run the download script directly.
+  if exist "node_modules\electron\install.js" (
+    echo [*] Running Electron binary downloader...
+    node node_modules\electron\install.js
+  )
   if not exist "node_modules\electron\dist\electron.exe" (
     echo.
     echo [X] Electron binary still missing after reinstall.
