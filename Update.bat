@@ -178,6 +178,35 @@ if "!NEED_NPM!"=="1" (
 )
 
 REM ---------------------------------------------------------------------------
+REM  7b. Verify Electron binary (postinstall download often fails silently)
+REM ---------------------------------------------------------------------------
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo [!] Electron binary is missing ^(the download likely failed during npm install^).
+  echo     Removing and re-downloading Electron...
+  echo.
+  if exist "node_modules\electron" rmdir /s /q "node_modules\electron"
+  call npm install electron
+  if errorlevel 1 (
+    echo.
+    echo [X] Electron reinstall failed. Check your internet connection and try again.
+    echo.
+    pause
+    exit /b 1
+  )
+  if not exist "node_modules\electron\dist\electron.exe" (
+    echo.
+    echo [X] Electron binary still missing after reinstall.
+    echo     Try running  npm install  manually in the project folder,
+    echo     or check https://github.com/electron/electron for known issues.
+    echo.
+    pause
+    exit /b 1
+  )
+  echo [ok] Electron installed successfully.
+  echo.
+)
+
+REM ---------------------------------------------------------------------------
 REM  8. Refresh Python dependencies
 REM ---------------------------------------------------------------------------
 if "!NEED_PIP!"=="1" (
