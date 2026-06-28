@@ -182,11 +182,15 @@ def _dither_fill(source, box, d: Dict, alpha: float, seed=None) -> Optional[Imag
     lum = np.clip(lum, 0.0, 1.0)
     lum = np.round(lum * (levels - 1)) / (levels - 1)        # posterize / threshold
 
-    fr, fg, fb, _ = _rgba(d.get("from", "#c71f05"), 1.0)
-    tr, tg, tb, _ = _rgba(d.get("to", "#ffe60d"), 1.0)
-    stops_lo = np.array([fr, fg, fb], dtype=np.float32)
-    stops_hi = np.array([tr, tg, tb], dtype=np.float32)
-    rgb = stops_lo + (stops_hi - stops_lo) * lum[..., None]
+    colors_raw = d.get("colors") or [d.get("from", "#c71f05"), d.get("to", "#ffe60d")]
+    if len(colors_raw) < 2:
+        colors_raw = [colors_raw[0], colors_raw[0]]
+    stops = np.array([list(_rgba(c, 1.0)[:3]) for c in colors_raw], dtype=np.float32)
+    num_stops = len(stops)
+    t_scaled = lum * (num_stops - 1)
+    seg = np.clip(np.floor(t_scaled).astype(np.int32), 0, num_stops - 2)
+    t_seg = t_scaled - seg
+    rgb = stops[seg] + (stops[seg + 1] - stops[seg]) * t_seg[..., None]
 
     a = max(0.0, min(1.0, float(d.get("opacity", 1.0)) * alpha))
     out = np.empty((lum.shape[0], lum.shape[1], 4), dtype=np.uint8)

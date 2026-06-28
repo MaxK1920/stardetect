@@ -152,17 +152,23 @@ window.App = window.App || {};
     const levels = Math.max(2, Math.round(d.levels || 3));
     const grain = Math.max(0, d.grain || 0);
     const contrast = d.contrast != null ? d.contrast : 1;
-    const [fr, fg, fb] = hexToRgb(d.from || '#c71f05');
-    const [tr, tg, tb] = hexToRgb(d.to || '#ffe60d');
+    const colors = (d.colors && d.colors.length >= 2) ? d.colors : [d.from || '#c71f05', d.to || '#ffe60d'];
+    const parsedColors = colors.map(hexToRgb);
+    const numStops = parsedColors.length;
     for (let i = 0; i < px.length; i += 4) {
       let lum = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) / 255;
       lum = (lum - 0.5) * contrast + 0.5;                  // contrast about mid-grey
       lum += (Math.random() - 0.5) * grain;                // pre-threshold grain
       lum = lum < 0 ? 0 : lum > 1 ? 1 : lum;
       lum = Math.round(lum * (levels - 1)) / (levels - 1); // posterize / threshold
-      px[i] = fr + (tr - fr) * lum;
-      px[i + 1] = fg + (tg - fg) * lum;
-      px[i + 2] = fb + (tb - fb) * lum;
+      const t = lum * (numStops - 1);
+      const seg = Math.min(numStops - 2, Math.floor(t));
+      const tSeg = t - seg;
+      const [r0, g0, b0] = parsedColors[seg];
+      const [r1, g1, b1] = parsedColors[seg + 1];
+      px[i]     = r0 + (r1 - r0) * tSeg;
+      px[i + 1] = g0 + (g1 - g0) * tSeg;
+      px[i + 2] = b0 + (b1 - b0) * tSeg;
       px[i + 3] = 255;
     }
     sc.getContext('2d').putImageData(data, 0, 0);
