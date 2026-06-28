@@ -151,6 +151,28 @@ def _draw_box(draw: ImageDraw.ImageDraw, box, style, line_w, alpha):
         draw.rectangle([x1, y1, x2, y2], outline=color, width=line_w)
 
 
+def _pixel_sort(rgb: "np.ndarray", ps: Dict) -> "np.ndarray":
+    """Sort pixels in each column (vertical) or row (horizontal) by luminance.
+
+    ``rgb`` is a float32 HxWx3 array (values 0-255). Returns the sorted array.
+    """
+    import numpy as np
+    lum = rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 + rgb[..., 2] * 0.114
+    reverse = bool(ps.get("reverse", False))
+    if (ps.get("direction") or "vertical") == "horizontal":
+        order = np.argsort(lum, axis=1)
+        if reverse:
+            order = order[:, ::-1]
+        row_idx = np.arange(rgb.shape[0])[:, None]
+        return rgb[row_idx, order, :]
+    else:
+        order = np.argsort(lum, axis=0)
+        if reverse:
+            order = order[::-1, :]
+        col_idx = np.arange(rgb.shape[1])[None, :]
+        return rgb[order, col_idx, :]
+
+
 def _dither_fill(source, box, d: Dict, alpha: float, seed=None) -> Optional[Image.Image]:
     """Grain-threshold gradient map of the footage inside ``box``.
 
@@ -192,6 +214,10 @@ def _dither_fill(source, box, d: Dict, alpha: float, seed=None) -> Optional[Imag
     t_seg = t_scaled - seg
     rgb = stops[seg] + (stops[seg + 1] - stops[seg]) * t_seg[..., None]
 
+    ps = d.get("pixelSort") or {}
+    if ps.get("enabled"):
+        rgb = _pixel_sort(rgb, ps)
+
     a = max(0.0, min(1.0, float(d.get("opacity", 1.0)) * alpha))
     out = np.empty((lum.shape[0], lum.shape[1], 4), dtype=np.uint8)
     out[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
@@ -200,7 +226,8 @@ def _dither_fill(source, box, d: Dict, alpha: float, seed=None) -> Optional[Imag
 
 
 def render_overlay(width: int, height: int, objects: List[Dict],
-                   render_config: Dict, time_s: float, source=None) -> Image.Image:
+                   render_config: Dict, time_s: float, source=None,
+                   trail_state: Optional[Dict] = None) -> Image.Image:
     """Render an RGBA overlay for one frame.
 
     ``source`` is an optional full-frame RGB numpy array (HxWx3 uint8) of the
@@ -221,6 +248,11 @@ def render_overlay(width: int, height: int, objects: List[Dict],
     global_opacity = float(render_config.get("globalOpacity", 1.0))
     kf = style_model.eval_keyframes(render_config.get("keyframes"), time_s)
 
+    global_trail = global_style.get("trail") or {}
+    trail_enabled = bool(global_trail.get("enabled")) and trail_state is not None
+    trail_len = max(1, int(global_trail.get("length", 8)))
+    trail_decay = float(global_trail.get("decay", 0.6))
+
     conf_thresh = kf.get("confidence")
     max_glow_blur = 0.0
     for obj in objects:
@@ -238,6 +270,15 @@ def render_overlay(width: int, height: int, objects: List[Dict],
         x1, y1, x2, y2 = box
         alpha = max(0.0, min(1.0, style["box"]["opacity"] * global_opacity))
         line_w = max(1, int(round(style["box"]["lineWidth"])))
+
+        oid_key = str(obj["id"]) if obj.get("id") is not None else None
+        if trail_enabled and oid_key is not None:
+            hist = trail_state.get(oid_key, [])
+            for age_idx, past_box in enumerate(hist):
+                age = len(hist) - age_idx
+                t_alpha = min(1.0, (trail_decay ** age) * alpha)
+                if t_alpha > 0.01:
+                    _draw_box(draw, past_box, style, line_w, t_alpha)
 
         # fill / gradient — dither takes precedence when enabled + footage present
         fill = style["box"].get("fill", {})
@@ -268,6 +309,13 @@ def render_overlay(width: int, height: int, objects: List[Dict],
             max_glow_blur = max(max_glow_blur, float(glow.get("blur", 12)))
 
         _draw_box(draw, box, style, line_w, alpha)
+
+        if trail_enabled and oid_key is not None:
+            hist = list(trail_state.get(oid_key, []))
+            hist.append(list(box))
+            if len(hist) > trail_len:
+                hist = hist[-trail_len:]
+            trail_state[oid_key] = hist
 
         # label
         lab = style["label"]

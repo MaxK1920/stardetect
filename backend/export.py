@@ -103,6 +103,9 @@ def _render_frames(metadata: Dict, render_config: Dict, tmp_dir: str,
         except Exception:
             cap = None
 
+    trail_cfg = ((render_config.get("global") or {}).get("trail") or {})
+    trail_state: Optional[Dict] = {} if trail_cfg.get("enabled") else None
+
     try:
         for n, i in enumerate(range(start, end)):
             t = i / fps
@@ -113,7 +116,8 @@ def _render_frames(metadata: Dict, render_config: Dict, tmp_dir: str,
                 if ok and frame is not None:
                     import cv2  # type: ignore
                     source = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = overlay_render.render_overlay(w, h, objs, render_config, t, source)
+            img = overlay_render.render_overlay(w, h, objs, render_config, t, source,
+                                                trail_state=trail_state)
             img.save(os.path.join(tmp_dir, f"ov_{n:06d}.png"))
             if n % 5 == 0:
                 progress(0.05 + 0.65 * (n / count), f"render overlay {n}/{count}")

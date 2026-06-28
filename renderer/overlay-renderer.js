@@ -12,7 +12,8 @@ window.App = window.App || {};
       glow: { enabled: false, blur: 14, color: '#000000' },
       fill: { enabled: false, color: '#000000', opacity: 0.12 },
       gradient: { enabled: false, from: '#00e5ff', to: '#ff2bd6', angle: 0 },
-      dither: { enabled: false, from: '#c71f05', to: '#ffe60d', grain: 0.25, levels: 3, contrast: 1, opacity: 1 },
+      dither: { enabled: false, from: '#c71f05', to: '#ffe60d', grain: 0.25, levels: 3, contrast: 1, opacity: 1,
+               pixelSort: { enabled: false, direction: 'vertical', reverse: false } },
     },
     label: {
       enabled: true, font: 'Consolas', fontSize: 16, color: '#ffffff',
@@ -20,6 +21,7 @@ window.App = window.App || {};
       format: '{class} {conf}', showConfidence: true, showId: false, padding: 5,
     },
     scan: { enabled: false, color: '#00e5ff', opacity: 0.25, speed: 1 },
+    trail: { enabled: false, length: 8, decay: 0.6 },
   };
 
   function hexToRgb(h) {
@@ -122,6 +124,10 @@ window.App = window.App || {};
     }
   }
 
+  // Module-level trail history: Map<id, [{box, t}]>.
+  let _trailHistory = new Map();
+  let _trailLastTime = -Infinity;
+
   // Reusable offscreen canvas for sampling/processing the source footage.
   let _ditherCanvas = null;
   function ditherScratch(w, h) {
@@ -129,6 +135,58 @@ window.App = window.App || {};
     if (_ditherCanvas.width !== w) _ditherCanvas.width = w;
     if (_ditherCanvas.height !== h) _ditherCanvas.height = h;
     return _ditherCanvas;
+  }
+
+  // Sort imageData pixels in each column or row by brightness (in-place).
+  function applyPixelSort(imageData, ps) {
+    const w = imageData.width, h = imageData.height;
+    const px = imageData.data;
+    const rev = !!ps.reverse;
+    if ((ps.direction || 'vertical') === 'horizontal') {
+      for (let y = 0; y < h; y++) {
+        const row = [];
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          row.push([px[i], px[i+1], px[i+2], px[i+3],
+                    px[i]*0.299 + px[i+1]*0.587 + px[i+2]*0.114]);
+        }
+        row.sort((a, b) => rev ? b[4] - a[4] : a[4] - b[4]);
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          px[i]=row[x][0]; px[i+1]=row[x][1]; px[i+2]=row[x][2]; px[i+3]=row[x][3];
+        }
+      }
+    } else {
+      for (let x = 0; x < w; x++) {
+        const col = [];
+        for (let y = 0; y < h; y++) {
+          const i = (y * w + x) * 4;
+          col.push([px[i], px[i+1], px[i+2], px[i+3],
+                    px[i]*0.299 + px[i+1]*0.587 + px[i+2]*0.114]);
+        }
+        col.sort((a, b) => rev ? b[4] - a[4] : a[4] - b[4]);
+        for (let y = 0; y < h; y++) {
+          const i = (y * w + x) * 4;
+          px[i]=col[y][0]; px[i+1]=col[y][1]; px[i+2]=col[y][2]; px[i+3]=col[y][3];
+        }
+      }
+    }
+  }
+
+  // Draw only the box stroke at the given alpha (used for trail ghosts).
+  function drawGhostBox(ctx, box, style, alpha) {
+    const [x1, y1, x2, y2] = box;
+    const b = style.box;
+    const lw = Math.max(1, b.lineWidth);
+    ctx.save();
+    ctx.lineWidth = lw; ctx.lineCap = 'square';
+    ctx.strokeStyle = rgba(b.color, alpha);
+    if (b.glow && b.glow.enabled) {
+      ctx.shadowColor = rgba(b.glow.color, alpha);
+      ctx.shadowBlur = b.glow.blur;
+    }
+    drawBoxPath(ctx, x1, y1, x2, y2, style, lw);
+    ctx.restore();
   }
 
   // Posterized grain-threshold gradient map of the source footage inside the box.
@@ -171,6 +229,8 @@ window.App = window.App || {};
       px[i + 2] = b0 + (b1 - b0) * tSeg;
       px[i + 3] = 255;
     }
+    const ps = d.pixelSort || {};
+    if (ps.enabled) applyPixelSort(data, ps);
     sc.getContext('2d').putImageData(data, 0, 0);
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, (d.opacity != null ? d.opacity : 1) * alpha));
@@ -255,13 +315,39 @@ window.App = window.App || {};
 
     const confThresh = ('confidence' in kf) ? kf.confidence : null;
     const aliases = config.classAliases || {};
+
+    const trail = gs.trail || {};
+    const trailEnabled = !!trail.enabled;
+    const trailLen = Math.max(1, Math.round(trail.length || 8));
+    const trailDecay = trail.decay != null ? trail.decay : 0.6;
+    if (time < _trailLastTime - 0.5) _trailHistory.clear();
+    _trailLastTime = time;
+
     for (const obj of objects) {
       const cls = obj.cls || 'object';
       if (confThresh != null && (obj.conf || 0) < confThresh) continue;
       if (config.classVisibility && config.classVisibility[cls] === false) continue;
       if (obj.id != null && config.idVisibility && config.idVisibility[String(obj.id)] === false) continue;
       const style = resolveStyle(config.global, config.classStyles, cls, kf);
+      const alpha = Math.max(0, Math.min(1, style.box.opacity * gOp));
+
+      if (trailEnabled && obj.id != null) {
+        const hist = _trailHistory.get(obj.id) || [];
+        for (let ti = 0; ti < hist.length; ti++) {
+          const age = hist.length - ti;
+          const ghostAlpha = Math.pow(trailDecay, age) * alpha;
+          if (ghostAlpha > 0.005) drawGhostBox(ctx, hist[ti].box, style, ghostAlpha);
+        }
+      }
+
       drawObject(ctx, obj, style, gOp, aliases[cls] || cls, source);
+
+      if (trailEnabled && obj.id != null) {
+        const hist = _trailHistory.get(obj.id) || [];
+        hist.push({ box: obj.box.slice(), t: time });
+        while (hist.length > trailLen) hist.shift();
+        _trailHistory.set(obj.id, hist);
+      }
     }
   }
 
