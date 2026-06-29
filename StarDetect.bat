@@ -86,6 +86,46 @@ if not exist "node_modules\electron" (
   echo [ok] Node dependencies present
 )
 
+REM  Verify the Electron binary - npm install reports success even when the
+REM  binary download step fails, leaving a broken node_modules\electron folder.
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo [!] Electron binary missing - attempting repair...
+  echo.
+  if exist "node_modules\electron" rmdir /s /q "node_modules\electron"
+  call npm install electron
+  set "ELECTRON_OK=0"
+  if exist "node_modules\electron\install.js" (
+    for /l %%A in (1,1,3) do (
+      if "!ELECTRON_OK!"=="0" (
+        echo [*] Downloading Electron binary ^(attempt %%A of 3^)...
+        node node_modules\electron\install.js
+        if exist "node_modules\electron\dist\electron.exe" set "ELECTRON_OK=1"
+        if "!ELECTRON_OK!"=="0" if %%A LSS 3 (
+          echo [!] Retrying in 5 seconds...
+          timeout /t 5 /nobreak >nul
+        )
+      )
+    )
+  )
+  if "!ELECTRON_OK!"=="0" (
+    echo.
+    echo [X] Could not download the Electron binary after 3 attempts.
+    echo     This is almost always a network issue ^(firewall / slow connection^).
+    echo.
+    echo     Manual fix:
+    echo       1. Download this file on any PC with working internet:
+    echo          https://github.com/electron/electron/releases/download/v31.7.7/electron-v31.7.7-win32-x64.zip
+    echo       2. Extract the zip contents into:
+    echo          %CD%\node_modules\electron\dist\
+    echo       3. Run StarDetect.bat again.
+    echo.
+    pause
+    exit /b 1
+  )
+  echo [ok] Electron installed.
+  echo.
+)
+
 REM ---------------------------------------------------------------------------
 REM  5. Python backend dependencies
 REM     Core: numpy, Pillow, opencv. YOLO engine: ultralytics ^(pulls torch^).
