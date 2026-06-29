@@ -33,6 +33,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
         "gradient": {"enabled": False, "from": "#00e5ff", "to": "#ff2bd6", "angle": 0.0},
         "dither": {"enabled": False, "colors": ["#c71f05", "#ffe60d"],
                    "grain": 0.25, "levels": 3, "contrast": 1.0, "opacity": 1.0,
+                   "fullFrame": False,
                    "pixelSort": {"enabled": False, "direction": "vertical", "reverse": False}},
     },
     "label": {
