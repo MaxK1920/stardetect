@@ -213,10 +213,23 @@ if not exist "node_modules\electron\dist\electron.exe" (
     )
   )
   if "!ELECTRON_OK!"=="0" (
+    echo [!] Standard download failed. Retrying with TLS verification disabled
+    echo     ^(required on networks with SSL inspection proxies^)...
+    set "NODE_TLS_REJECT_UNAUTHORIZED=0"
+    node node_modules\electron\install.js
+    set "NODE_TLS_REJECT_UNAUTHORIZED="
+    if exist "node_modules\electron\dist\electron.exe" set "ELECTRON_OK=1"
+  )
+  if "!ELECTRON_OK!"=="0" (
     echo.
-    echo [X] Electron binary download failed after 3 attempts.
-    echo     This is usually a network issue ^(slow connection / firewall^).
-    echo     Try again later, or run  npm install  manually in the project folder.
+    echo [X] Electron binary download failed.
+    echo     Your network may be blocking the download ^(corporate/school firewall^).
+    echo.
+    echo     Manual fix:
+    echo       1. Download on any machine with open internet:
+    echo          https://github.com/electron/electron/releases/download/v31.7.7/electron-v31.7.7-win32-x64.zip
+    echo       2. Extract the zip into:  node_modules\electron\dist\
+    echo       3. Run Update.bat again.
     echo.
     pause
     exit /b 1
