@@ -274,6 +274,12 @@ def render_overlay(width: int, height: int, objects: List[Dict],
     trail_len = max(1, int(global_trail.get("length", 8)))
     trail_decay = float(global_trail.get("decay", 0.6))
 
+    global_dith = global_style.get("box", {}).get("dither", {})
+    if global_dith.get("enabled") and global_dith.get("fullFrame") and source is not None:
+        ff_tile = _dither_fill(source, [0, 0, width, height], global_dith, global_opacity)
+        if ff_tile is not None:
+            img.alpha_composite(ff_tile, (0, 0))
+
     conf_thresh = kf.get("confidence")
     max_glow_blur = 0.0
     for _oi, obj in enumerate(objects):

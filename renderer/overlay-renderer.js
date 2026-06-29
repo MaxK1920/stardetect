@@ -13,6 +13,7 @@ window.App = window.App || {};
       fill: { enabled: false, color: '#000000', opacity: 0.12 },
       gradient: { enabled: false, from: '#00e5ff', to: '#ff2bd6', angle: 0 },
       dither: { enabled: false, from: '#c71f05', to: '#ffe60d', grain: 0.25, levels: 3, contrast: 1, opacity: 1,
+               fullFrame: false,
                pixelSort: { enabled: false, direction: 'vertical', reverse: false } },
     },
     label: {
@@ -333,6 +334,11 @@ window.App = window.App || {};
       const sy = (time * 180 * (gs.scan.speed || 1)) % h;
       ctx.fillStyle = rgba(gs.scan.color, gs.scan.opacity * gOp);
       ctx.fillRect(0, sy, w, 2);
+    }
+
+    const gsDith = (gs.box && gs.box.dither) || {};
+    if (gsDith.enabled && gsDith.fullFrame && source) {
+      drawDitherFill(ctx, source, 0, 0, w, h, gsDith, gOp);
     }
 
     const confThresh = ('confidence' in kf) ? kf.confidence : null;

@@ -15,6 +15,7 @@
       "fill": { "enabled": false, "color": "#000000", "opacity": 0.12 },
       "gradient": { "enabled": false, "from": "#00e5ff", "to": "#ff2bd6", "angle": 0 },
       "dither": { "enabled": false, "colors": ["#c71f05", "#ffe60d"], "grain": 0.25, "levels": 3, "contrast": 1, "opacity": 1,
+               "fullFrame": false,
                "pixelSort": { "enabled": false, "direction": "vertical", "reverse": false } }
     },
     "label": {

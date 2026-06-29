@@ -48,7 +48,7 @@ window.App = window.App || {};
     const b = S().box, L = S().label, sc = S().scan;
     // Back-fill the dither block for styles/presets created before it existed.
     const d = b.dither = Object.assign(
-      { enabled: false, colors: ['#c71f05', '#ffe60d'], grain: 0.25, levels: 3, contrast: 1, opacity: 1 },
+      { enabled: false, colors: ['#c71f05', '#ffe60d'], grain: 0.25, levels: 3, contrast: 1, opacity: 1, fullFrame: false },
       b.dither || {});
     if (!d.colors || !d.colors.length) d.colors = [d.from || '#c71f05', d.to || '#ffe60d'];
     const dps = d.pixelSort = Object.assign(
@@ -94,7 +94,8 @@ window.App = window.App || {};
 
       group('Dither Gradient Fill',
         checkRow('Dither gradient fill', d.enabled, (v) => { d.enabled = v; changed(); }),
-        h('p', { class: 'hint' }, 'Posterizes the footage inside the box, adds grain, and maps brightness through the colors below. Overrides solid/gradient fill when on.'),
+        checkRow('Apply to full frame', d.fullFrame, (v) => { d.fullFrame = v; changed(); }),
+        h('p', { class: 'hint' }, 'Posterizes the footage inside the box, adds grain, and maps brightness through the colors below. Overrides solid/gradient fill when on. "Full frame" applies the dither to the entire video instead of just inside detection boxes.'),
         selectRow('Number of colors', d.colors.length,
           [2, 3, 4, 5, 6].map((n) => ({ value: n, label: `${n} colors` })),
           (v) => {
