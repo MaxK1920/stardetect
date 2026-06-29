@@ -108,9 +108,17 @@ if not exist "node_modules\electron\dist\electron.exe" (
     )
   )
   if "!ELECTRON_OK!"=="0" (
+    echo [!] Standard download failed. Retrying with TLS verification disabled
+    echo     ^(required on networks with SSL inspection proxies^)...
+    set "NODE_TLS_REJECT_UNAUTHORIZED=0"
+    node node_modules\electron\install.js
+    set "NODE_TLS_REJECT_UNAUTHORIZED="
+    if exist "node_modules\electron\dist\electron.exe" set "ELECTRON_OK=1"
+  )
+  if "!ELECTRON_OK!"=="0" (
     echo.
-    echo [X] Could not download the Electron binary after 3 attempts.
-    echo     This is almost always a network issue ^(firewall / slow connection^).
+    echo [X] Could not download the Electron binary.
+    echo     Your network may be blocking the download ^(corporate/school firewall^).
     echo.
     echo     Manual fix:
     echo       1. Download this file on any PC with working internet:
