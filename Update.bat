@@ -265,6 +265,39 @@ if /i "!CHOICE!"=="no" goto :done
 echo.
 echo [*] Launching StarDetect...
 echo.
+
+REM  Always verify the Electron binary before launching - it may be missing
+REM  even when the repo is already up to date (e.g. a previously failed install).
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo [!] Electron binary missing - attempting repair before launch...
+  echo.
+  if exist "node_modules\electron" rmdir /s /q "node_modules\electron"
+  call npm install electron
+  set "ELECTRON_OK=0"
+  if exist "node_modules\electron\install.js" (
+    for /l %%A in (1,1,3) do (
+      if "!ELECTRON_OK!"=="0" (
+        echo [*] Downloading Electron binary ^(attempt %%A of 3^)...
+        node node_modules\electron\install.js
+        if exist "node_modules\electron\dist\electron.exe" set "ELECTRON_OK=1"
+        if "!ELECTRON_OK!"=="0" if %%A LSS 3 (
+          echo [!] Retrying in 5 seconds...
+          timeout /t 5 /nobreak >nul
+        )
+      )
+    )
+  )
+  if "!ELECTRON_OK!"=="0" (
+    echo.
+    echo [X] Could not install Electron. Check your connection and try again.
+    echo.
+    pause
+    exit /b 1
+  )
+  echo [ok] Electron repaired.
+  echo.
+)
+
 set "NODE_OPTIONS="
 call npx electron .
 
