@@ -72,9 +72,44 @@ window.App = window.App || {};
     return res;
   }
 
+  // The base (DEFAULT + global + per-class) merge is expensive (deep clone via
+  // JSON) and was recomputed for every object on every frame. Cache it per class
+  // and invalidate only when the underlying config objects change identity.
+  // Keyframe overrides are applied on a cheap shallow copy so the cache stays
+  // clean. This removes the per-object-per-frame deep-clone hotspot.
+  let _styleCache = new Map();
+  let _styleCacheGlobal = undefined;
+  let _styleCacheClasses = undefined;
+
+  // Global-only merge (DEFAULT + global), cached separately so the per-frame
+  // scan/dither/trail lookup doesn't thrash the per-class cache above.
+  let _globalCache = null;
+  let _globalCacheRef = undefined;
+  function resolveGlobalStyle(global) {
+    if (_globalCacheRef !== global) {
+      _globalCacheRef = global;
+      _globalCache = deepMerge(DEFAULT_STYLE, global || {});
+    }
+    return _globalCache;
+  }
+
   function resolveStyle(global, classStyles, cls, kf) {
-    let s = deepMerge(DEFAULT_STYLE, global || {});
-    if (classStyles && classStyles[cls]) s = deepMerge(s, classStyles[cls]);
+    if (_styleCacheGlobal !== global || _styleCacheClasses !== classStyles) {
+      _styleCache.clear();
+      _styleCacheGlobal = global;
+      _styleCacheClasses = classStyles;
+    }
+    let base = _styleCache.get(cls);
+    if (!base) {
+      base = deepMerge(DEFAULT_STYLE, global || {});
+      if (classStyles && classStyles[cls]) base = deepMerge(base, classStyles[cls]);
+      _styleCache.set(cls, base);
+    }
+    kf = kf || {};
+    const hasKf = ('opacity' in kf) || ('lineWidth' in kf) || ('labelsVisible' in kf)
+      || ('color' in kf && typeof kf.color === 'string');
+    if (!hasKf) return base;
+    const s = { ...base, box: { ...base.box }, label: { ...base.label } };
     if ('opacity' in kf) s.box.opacity = kf.opacity;
     if ('lineWidth' in kf) s.box.lineWidth = kf.lineWidth;
     if ('labelsVisible' in kf) s.label.enabled = !!kf.labelsVisible;
@@ -328,8 +363,9 @@ window.App = window.App || {};
     const kf = evalKeyframes(config.keyframes, time);
     const gOp = (config.globalOpacity != null ? config.globalOpacity : 1);
 
-    // optional scanline aesthetic (from global style)
-    const gs = deepMerge(DEFAULT_STYLE, config.global || {});
+    // optional scanline aesthetic (from global style). Cached global-only merge
+    // instead of a fresh per-frame deep clone.
+    const gs = resolveGlobalStyle(config.global);
     if (gs.scan && gs.scan.enabled) {
       const sy = (time * 180 * (gs.scan.speed || 1)) % h;
       ctx.fillStyle = rgba(gs.scan.color, gs.scan.opacity * gOp);

@@ -117,11 +117,68 @@ function registerMediaProtocol() {
   });
 }
 
+// Diagnostic: report whether Chromium is using the GPU or falling back to
+// software (CPU) rendering on this machine. Surfaces blocklisted GPUs, crashed
+// GPU processes and SwiftShader fallback, which all manifest as a sluggish UI.
+async function logGpuStatus(phase = 'startup') {
+  try {
+    // What command line did Chromium actually receive, and is GPU explicitly off?
+    if (phase === 'startup') log.info('gpu', `process.argv: ${JSON.stringify(process.argv)}`);
+    log.info('gpu', `--- phase: ${phase} ---`);
+    ['disable-gpu', 'disable-gpu-compositing', 'disable-software-rasterizer',
+      'use-gl', 'use-angle', 'in-process-gpu', 'disable-gpu-sandbox']
+      .forEach((sw) => {
+        if (app.commandLine.hasSwitch(sw)) {
+          log.warn('gpu', `command-line switch present: --${sw}=${app.commandLine.getSwitchValue(sw) || '(set)'}`);
+        }
+      });
+    const feat = app.getGPUFeatureStatus();
+    log.info('gpu', `feature status: ${JSON.stringify(feat)}`);
+    // Only a "*_software" value means a feature fell back to CPU. "disabled_off"
+    // / "disabled_off_ok" are features Electron intentionally ships off (vulkan,
+    // skia_graphite, raw_draw, webnn, direct display compositor) — not CPU
+    // fallback. The startup phase reports bootstrap defaults before the GPU
+    // process handshake, so only trust 'gpu-info-update' / 'delayed-3s'.
+    const swSignals = Object.entries(feat || {})
+      .filter(([, v]) => /software/i.test(String(v)))
+      .map(([k, v]) => `${k}=${v}`);
+    if (swSignals.length) {
+      log.warn('gpu', `CPU/software fallback for: ${swSignals.join(', ')}`);
+    } else {
+      log.info('gpu', 'hardware acceleration ACTIVE for compositing/canvas/WebGL/raster');
+    }
+    const info = await app.getGPUInfo('complete');
+    const aux = (info && info.auxAttributes) || {};
+    log.info('gpu', `glRenderer=${aux.glRenderer || '?'} glVendor=${aux.glVendor || '?'} `
+      + `swRendering=${aux.softwareRendering} glImplementation=${aux.glImplementation || '?'} `
+      + `glResetNotificationStrategy=${aux.glResetNotificationStrategy}`);
+    const devices = (info && info.gpuDevice) || [];
+    if (!devices.length) {
+      log.warn('gpu', 'no GPU device reported — GPU process did not enumerate any adapter.');
+    }
+    devices.forEach((d, i) => {
+      log.info('gpu', `device[${i}] vendorId=${d.vendorId} deviceId=${d.deviceId} `
+        + `active=${d.active} driverVendor=${d.driverVendor || '?'} driverVersion=${d.driverVersion || '?'}`);
+    });
+    if (aux.glRenderer && /swiftshader|llvmpipe|software/i.test(aux.glRenderer)) {
+      log.warn('gpu', `GL renderer is software (${aux.glRenderer}) — UI is running on CPU.`);
+    }
+  } catch (err) {
+    log.warn('gpu', `status query failed: ${err.message}`);
+  }
+}
+
 app.whenReady().then(() => {
   log.clear();
   log.info('app', `StarDetect starting (electron ${process.versions.electron})`);
   registerMediaProtocol();
   createWindow();
+  logGpuStatus('startup');
+  // The GPU process completes its handshake asynchronously; the startup query
+  // above can report bootstrap "software" defaults. Re-query once the real
+  // status arrives and again after a short delay to capture steady state.
+  app.once('gpu-info-update', () => logGpuStatus('gpu-info-update'));
+  setTimeout(() => logGpuStatus('delayed-3s'), 3000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

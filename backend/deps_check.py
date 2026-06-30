@@ -68,10 +68,15 @@ def collect() -> Dict[str, Any]:
     ffmpeg = _ffmpeg_info()
 
     cuda = False
+    torch_cpu_only = False
     if torch_v and not str(torch_v).startswith("error"):
         try:
             import torch  # type: ignore
             cuda = bool(torch.cuda.is_available())
+            # A "+cpu" build (or any build that can't see CUDA) runs detection on
+            # the CPU even when a capable GPU is present — the #1 cause of slow,
+            # machine-specific detection/export.
+            torch_cpu_only = (not cuda) and ("+cpu" in str(torch_v) or torch.version.cuda is None)
         except Exception:
             cuda = False
 
@@ -85,6 +90,7 @@ def collect() -> Dict[str, Any]:
         "ultralytics": ultra_v,
         "torch": torch_v,
         "cuda": cuda,
+        "torch_cpu_only": torch_cpu_only,
         "ffmpeg": ffmpeg,
         "ffmpeg_encoders": _ffmpeg_encoders(),
         "yolo_ready": yolo_ready,
@@ -99,6 +105,13 @@ def collect() -> Dict[str, Any]:
         report["messages"].append(
             "YOLO (ultralytics + torch) not available - running in FALLBACK mode "
             "with synthetic detections. Install with: pip install -r backend/requirements.txt"
+        )
+    elif torch_cpu_only:
+        report["messages"].append(
+            f"PyTorch is a CPU-only build ({torch_v}) - detection/export run on the "
+            "CPU and will be slow even with a capable GPU. Install a CUDA build: "
+            "pip uninstall -y torch torchvision && pip install torch torchvision "
+            "--index-url https://download.pytorch.org/whl/cu124"
         )
     if not ffmpeg["available"]:
         report["messages"].append(
