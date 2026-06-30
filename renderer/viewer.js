@@ -4,6 +4,7 @@ window.App = window.App || {};
 (function () {
   const S = {};
   let rafId = null;
+  let _lastDrawnFrame = -1;
 
   function init() {
     S.video = document.getElementById('video');
@@ -33,7 +34,7 @@ window.App = window.App || {};
       App.UI.toast(msg, 'err', 8000);
     });
     S.video.addEventListener('timeupdate', () => { if (S.video.paused) redraw(); updateClock(); });
-    S.video.addEventListener('play', loop);
+    S.video.addEventListener('play', () => { _lastDrawnFrame = -1; loop(); });
     S.video.addEventListener('pause', () => { document.getElementById('btn-play').textContent = '▶'; updateClock(); });
     S.video.addEventListener('seeked', redraw);
 
@@ -147,7 +148,13 @@ window.App = window.App || {};
 
   function loop() {
     if (S.video.paused) { cancelAnimationFrame(rafId); return; }
-    redraw(); updateClock();
+    // The overlay only changes when the video advances to a new frame. On a
+    // high-refresh display rAF fires far faster than the video fps, so gate the
+    // (CPU-bound) overlay redraw on the frame index changing. updateClock stays
+    // every tick so the playhead/timecode remain smooth.
+    const fi = frameIndex();
+    if (fi !== _lastDrawnFrame) { _lastDrawnFrame = fi; redraw(); }
+    updateClock();
     rafId = requestAnimationFrame(loop);
   }
 

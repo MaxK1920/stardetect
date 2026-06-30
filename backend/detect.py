@@ -87,11 +87,23 @@ def _detect_yolo(video: str, model_name: str, conf: float, iou: float, imgsz,
     imgsz = resolve_imgsz(imgsz, info)
     total = max(info["frameCount"], 1)
     resolved = resolve_model(model_name)
-    progress(0.02, f"loading model {os.path.basename(resolved)}")
+
+    # Run on the GPU when a CUDA build of torch can see one; otherwise CPU. Being
+    # explicit (and reporting it) makes a slow CPU-only torch obvious to the user.
+    device = "cpu"
+    try:
+        import torch  # type: ignore
+        if torch.cuda.is_available():
+            device = "0"
+    except Exception:
+        pass
+    dev_label = "GPU" if device != "cpu" else "CPU"
+
+    progress(0.02, f"loading model {os.path.basename(resolved)} on {dev_label}")
     model = YOLO(resolved)
 
     common = dict(source=video, stream=True, conf=conf, iou=iou, imgsz=imgsz,
-                  verbose=False)
+                  device=device, verbose=False)
     if classes:
         common["classes"] = classes
 
