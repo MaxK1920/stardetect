@@ -1,6 +1,6 @@
 # StarDetect
 
-An internal desktop tool for creating **artistic object-detection overlays** on
+An open-source desktop tool for creating **artistic object-detection overlays** on
 video — YOLO-style bounding boxes, corner-bracket HUDs, labels, glow, gradients,
 scan effects, plus detection-triggered sound design and a transparent-alpha
 overlay export for compositing in Premiere / After Effects / Resolve.
@@ -137,3 +137,15 @@ npm run dist      # installer via electron-builder
 - Detection metadata (`*.detections.json`) is the contract between detection and
   rendering. Style presets and export settings are separate JSON so the same
   detection can be restyled and re-encoded many ways without re-running YOLO.
+
+---
+
+## License
+
+StarDetect is licensed under the **GNU AGPL-3.0** (see [LICENSE](LICENSE)). It depends on [Ultralytics YOLO](https://github.com/ultralytics/ultralytics) and its model weights, which are also AGPL-3.0, so the whole project is released under the same terms.
+
+### Third-party software
+
+- **Ultralytics YOLO** and bundled/downloaded weights (e.g. `models/yolov8n.pt`) - AGPL-3.0
+- **FFmpeg** - LGPL/GPL depending on your build; installed separately, not bundled
+- **Electron**, **Pillow**, **NumPy**, **OpenCV** - their respective permissive licenses

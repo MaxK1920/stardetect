@@ -3,8 +3,16 @@
   "version": "0.1.0",
   "description": "StarDetect - artistic YOLO object-detection overlay tool for video production",
   "main": "electron/main.js",
-  "author": "Internal Video Production",
-  "license": "MIT",
+  "author": "MaxK1920",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MaxK1920/stardetect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MaxK1920/stardetect/issues"
+  },
+  "homepage": "https://github.com/MaxK1920/stardetect#readme",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",

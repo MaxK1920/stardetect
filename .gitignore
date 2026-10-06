@@ -13,3 +13,6 @@ models/*.pt
 
 # Generated detection caches in userData are outside the repo, but ignore any local ones
 *.detections.local.json
+
+# Generated on demand by the demo loader
+assets/demo/demo.mp4
