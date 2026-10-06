@@ -1,151 +1,89 @@
 # StarDetect
 
-An open-source desktop tool for creating **artistic object-detection overlays** on
-video — YOLO-style bounding boxes, corner-bracket HUDs, labels, glow, gradients,
-scan effects, plus detection-triggered sound design and a transparent-alpha
-overlay export for compositing in Premiere / After Effects / Resolve.
+Desktop app that runs YOLO object detection on a video and draws stylable overlays on top: boxes, corner brackets, labels, glow, gradients, scan effects. It can also add sounds when objects show up, and export the overlay with a transparent background so you can drop it into Premiere, After Effects or Resolve.
 
-- **Real YOLO** detection backend (ultralytics) with a contour-based fallback so
-  the UI is fully testable even before YOLO/weights are installed.
-- **Detection metadata is stored separately from rendering** — changing fonts,
-  colors or styles never re-runs YOLO.
-- **Two matching renderers**: a canvas renderer for instant live preview and a
-  PIL renderer for final export (identical style schema).
-- Electron desktop GUI, Python backend, FFmpeg for encoding.
+Detection results are saved separately from the styling. Changing colors, fonts or anything else never re-runs the model.
 
----
+Built with Electron, a Python backend and FFmpeg.
 
-## Quick start
+## Setup
+
+You need Node.js, Python 3 and [FFmpeg](https://ffmpeg.org) on your `PATH`. Without FFmpeg the app still runs, but export is disabled.
 
 ```powershell
-# 1. Python deps (backend)
 pip install -r backend/requirements.txt
-
-# 2. App deps (Electron)
 npm install
-
-# 3. Check everything is wired up
 npm run deps:check
-
-# 4. Run the app
-npm start          # or: npm run dev  (opens devtools)
+npm start
 ```
 
-Then in the app: **Load Demo → Detect Whole Video → tweak Style → Export Video →
-Export alpha overlay**. A demo clip and demo detections are bundled, so it works
-with zero setup.
+`npm run dev` does the same but opens devtools.
 
-> **FFmpeg** must be installed and on `PATH` (https://ffmpeg.org). The app
-> auto-detects it and disables export if missing.
+`Load Demo` in the app generates a short test clip, so you can try things without your own footage. The basic flow is: load a video, detect, adjust the style, export.
 
-### Vertical slice (the intended core flow)
-import video → run real YOLO detection → preview overlay → change style live →
-export burned-in video → export alpha overlay → export detection sound WAV.
+## Detection models
 
----
+The dropdown offers `yolov8n/s/m` and `yolo11n/s/m`. Ultralytics downloads the weights the first time you use one. If you're offline or behind a proxy, put the `.pt` file in `models/` and it will be picked up from there. `yolov8n.pt` is already included.
 
-## Smoke test (no GUI)
+If ultralytics or torch aren't installed, detection falls back to a simple contour-based detector for bright moving shapes. It's not useful for real footage, but the rest of the app (styling, keyframes, export, sound, batch) still works.
+
+## Features
+
+- **Playback:** import local video, scrub the timeline, step frame by frame, overlay drawn over the footage.
+- **Detection:** choose the model, confidence, IoU, image size, class filter and tracking. Results are cached as JSON.
+- **Style editor:** full boxes or corner brackets, line width, color, opacity, glow, fill, gradients, label font/size/format/position, scan effect. Presets can be saved and loaded.
+- **Per-class and per-object styling:** colors and visibility per class, and show/hide for individual tracked objects.
+- **Keyframes:** animate opacity, line width, confidence threshold, label visibility and color over time. Double-click the timeline lane to add one, drag to move, right-click to delete.
+- **Export:** MP4 (H.264 / H.265), ProRes, image sequence, burned-in video, or a transparent overlay (ProRes 4444, VP9, PNG sequence). Source audio and detection sounds are optional.
+- **Sound:** a handful of generated sounds (blip, scanner, beep, glitch, notify), triggered when a new object appears, a class enters the frame, or on a pulse while visible. Export as WAV or mux into the video.
+- **Batch:** queue several videos and apply the same detection, style and export settings to all of them.
+
+## Tests
 
 ```powershell
 python tests/smoke_test.py
 ```
 
-Runs the whole backend pipeline end-to-end (demo → detect → render frame →
-burned export → alpha export → SFX wav → detection soundtrack) and prints a
-PASS/FAIL summary.
+Runs the backend pipeline without the GUI: demo clip, detection, frame render, burned and alpha export, sound effects. Prints pass/fail per step.
 
----
-
-## Where things live
-
-| Concern | File |
-| --- | --- |
-| **YOLO detection** (real + fallback) | `backend/detect.py` |
-| Detection CLI / task dispatcher | `backend/cli.py` |
-| **Style + keyframe model** (shared schema) | `backend/style_model.py` |
-| **Overlay rendering** for export (PIL) | `backend/overlay_render.py` |
-| Overlay rendering for live preview (canvas) | `renderer/overlay-renderer.js` |
-| **FFmpeg export** (burned / alpha / sequence) | `backend/export.py` |
-| **Sound generation** (SFX + detection soundtrack) | `backend/sound.py` |
-| Demo video generator | `backend/demo.py` |
-| Dependency check | `backend/deps_check.py` |
-| Electron main / IPC | `electron/main.js` |
-| Python bridge (spawn + JSON protocol) | `electron/backend-bridge.js` |
-| Renderer UI (panels) | `renderer/*.js` |
-| **Style presets** (editable JSON) | `presets/styles/*.json` |
-| **Export presets** (Premiere-style) | `presets/exports/export-presets.json` |
-| Bundled demo + detections | `assets/demo/` |
-| YOLO weights (bundled / offline) | `models/` |
-
----
-
-## Features
-
-- **Import & playback** — local video import, preview, timeline/playhead scrubbing,
-  frame stepping, overlay drawn on top of footage.
-- **Detection** — YOLO model dropdown, confidence / IoU / image size / class
-  filter / tracking. Pre-detect the whole clip; results cached as JSON metadata.
-- **Live style editor** — box mode (full / corner brackets), shape, line width,
-  color, opacity, glow, fill, gradients, label font/size/format/position,
-  confidence & ID toggles, scan effect. Instant generic example box + preview on
-  a real detected frame. Save/load presets.
-- **Style by class / object** — per-class colors & visibility; per-tracked-ID
-  show/hide.
-- **Keyframes** — keyframe opacity, line width, confidence threshold, label
-  visibility and color over time, with interpolation. Dot lane in the timeline
-  (double-click to add, drag to move, right-click to delete).
-- **Export** — Premiere-style presets: MP4 H.264 / H.265, ProRes, image sequence,
-  **transparent alpha overlay** (ProRes 4444 / VP9 / PNG sequence) and burned-in.
-  Optional source + detection-SFX audio.
-- **Sound FX** — digital blip, sci-fi scanner, tactical beep, glitch tick, soft
-  notify. Trigger on new tracked object / class enters frame / pulse while
-  visible. Export as standalone WAV or mux into the video.
-- **Batch** — queue multiple videos, apply the same detection + style + export
-  preset, with per-item progress and output location.
-
----
-
-## Models / offline use
-
-The model dropdown lists `yolov8n/s/m` and `yolo11n/s/m`. ultralytics
-auto-downloads weights on first use. If you are behind a proxy or offline,
-drop the `.pt` file into the `models/` folder (e.g. `models/yolov8n.pt`) and the
-backend will use it without downloading. `yolov8n.pt` is bundled by default.
-
-If YOLO/torch are not installed, detection automatically runs in **fallback**
-mode (contour/blob detection of bright moving shapes) so the full UI — style
-editing, keyframes, export, sound, batch — remains testable.
-
----
-
-## Build / package
+## Building
 
 ```powershell
-npm run pack      # unpacked build (release/)
-npm run dist      # installer via electron-builder
+npm run pack      # unpacked build in release/
+npm run dist      # installer
 ```
 
----
+## Code layout
 
-## Architecture notes
+| What | Where |
+| --- | --- |
+| Detection (YOLO and fallback) | `backend/detect.py` |
+| CLI entry point | `backend/cli.py` |
+| Style and keyframe model | `backend/style_model.py` |
+| Overlay rendering for export (PIL) | `backend/overlay_render.py` |
+| Overlay rendering for preview (canvas) | `renderer/overlay-renderer.js` |
+| FFmpeg export | `backend/export.py` |
+| Sound generation | `backend/sound.py` |
+| Demo clip generator | `backend/demo.py` |
+| Dependency check | `backend/deps_check.py` |
+| Electron main process and IPC | `electron/main.js` |
+| Python bridge | `electron/backend-bridge.js` |
+| UI panels | `renderer/*.js` |
+| Style presets | `presets/styles/` |
+| Export presets | `presets/exports/export-presets.json` |
 
-- The Electron renderer never talks to Python directly. `electron/main.js`
-  exposes IPC handlers; `backend-bridge.js` spawns `python backend/cli.py <cmd>`
-  and parses newline-delimited JSON (`progress` / `result` / `error`) from stdout.
-- Local video is served to the `<video>` element through a privileged `media://`
-  protocol (range-request/seeking support) registered in `main.js`.
-- Detection metadata (`*.detections.json`) is the contract between detection and
-  rendering. Style presets and export settings are separate JSON so the same
-  detection can be restyled and re-encoded many ways without re-running YOLO.
+The renderer never talks to Python directly. `electron/main.js` exposes IPC handlers, and `backend-bridge.js` spawns `python backend/cli.py <command>` and reads newline-delimited JSON (`progress`, `result`, `error`) from stdout.
 
----
+The preview and the export use two separate renderers (canvas and PIL) that read the same style schema, so they should look the same.
+
+Local videos reach the `<video>` element through a `media://` protocol registered in `main.js`, which supports range requests for seeking.
 
 ## License
 
-StarDetect is licensed under the **GNU AGPL-3.0** (see [LICENSE](LICENSE)). It depends on [Ultralytics YOLO](https://github.com/ultralytics/ultralytics) and its model weights, which are also AGPL-3.0, so the whole project is released under the same terms.
+AGPL-3.0, see [LICENSE](LICENSE). StarDetect depends on [Ultralytics YOLO](https://github.com/ultralytics/ultralytics) and its weights, which are AGPL-3.0 as well, so the whole project uses the same license.
 
-### Third-party software
+Other things it uses:
 
-- **Ultralytics YOLO** and bundled/downloaded weights (e.g. `models/yolov8n.pt`) - AGPL-3.0
-- **FFmpeg** - LGPL/GPL depending on your build; installed separately, not bundled
-- **Electron**, **Pillow**, **NumPy**, **OpenCV** - their respective permissive licenses
+- Ultralytics YOLO and weights (including `models/yolov8n.pt`): AGPL-3.0
+- FFmpeg: LGPL or GPL depending on the build. Installed separately, not bundled.
+- Electron, Pillow, NumPy, OpenCV: their own permissive licenses
